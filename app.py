@@ -234,19 +234,30 @@ def build_feature_vector(data):
     }
     return pd.DataFrame([row])[FEATURE_NAMES]
 
-def get_openrouter_client():
-    api_key = st.secrets.get("OPENROUTER_API_KEY", "")
-    return OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+def get_openrouter_api_key():
+    try:
+        return st.secrets.get("OPENROUTER_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
+    except Exception:
+        return os.environ.get("OPENROUTER_API_KEY", "")
 
 def chat_with_llm(messages):
-    client = get_openrouter_client()
+    api_key = get_openrouter_api_key()
+    if not api_key:
+        return (
+            "⚠️ **OpenRouter API Key Missing in Streamlit Cloud**\n\n"
+            "To enable the AI chatbot and summaries:\n"
+            "1. Click **Manage app** (bottom-right of your screen) -> **Settings** -> **Secrets**\n"
+            "2. Add:\n```toml\nOPENROUTER_API_KEY = \"your-key-here\"\n```\n"
+            "3. Click **Save**."
+        )
     try:
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
         resp = client.chat.completions.create(
             model="google/gemini-2.5-flash", messages=messages,
             temperature=0.4, max_tokens=1024)
         return resp.choices[0].message.content
     except Exception as e:
-        return f"LLM Error: {e}"
+        return f"⚠️ LLM Error: {e}"
 
 # ============================================================
 # 3. SIDEBAR NAVIGATION
